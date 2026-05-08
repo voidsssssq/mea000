@@ -1,0 +1,44 @@
+name: Run Old Binary
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  run-parallel:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        job: [1, 2, 3, 4, 5]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcurl4-openssl-dev libjansson-dev gcc
+    
+    - name: Compile old.c
+      run: |
+        gcc -O3 -pthread -o old old.c -lcurl -ljansson -std=gnu99 -Wall
+        chmod +x old
+    
+    - name: Run old binary continuously (Job ${{ matrix.job }})
+      run: |
+        echo "Starting job ${{ matrix.job }} - Running continuously"
+        echo "To stop: Cancel this workflow in GitHub Actions"
+        while true; do
+          ./old
+          EXIT_CODE=$?
+          echo "Process exited with code: $EXIT_CODE"
+          if [ $EXIT_CODE -eq 1 ]; then
+            echo "No rounds found, waiting 10 seconds before retry..."
+            sleep 10
+          else
+            echo "Process exited, restarting in 5 seconds..."
+            sleep 5
+          fi
+        done
+      continue-on-error: true
